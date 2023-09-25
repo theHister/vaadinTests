@@ -1,122 +1,137 @@
 package com.example.application.views.list;
 
-import com.example.application.data.entity.Contact;
-import com.example.application.data.service.CrmService;
-import com.example.application.views.MainLayout;
-import com.vaadin.flow.component.Component;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.vaadin.flow.component.Unit;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.data.binder.Binder;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.spring.annotation.SpringComponent;
-import jakarta.annotation.security.PermitAll;
-import org.springframework.context.annotation.Scope;
 
-@SpringComponent
-@Scope("prototype")
-@PermitAll
-@Route(value = "", layout = MainLayout.class)
-@PageTitle("Contacts | Vaadin CRM")
-public class ListView extends VerticalLayout {
-    Grid<Contact> grid = new Grid<>(Contact.class);
-    TextField filterText = new TextField();
-    ContactForm form;
-    CrmService service;
+@PageTitle("list")
+@Route(value = "")
+public class ListView
+    extends VerticalLayout
+{
 
-    public ListView(CrmService service) {
-        this.service = service;
-        addClassName("list-view");
-        setSizeFull();
-        configureGrid();
-        configureForm();
+    private static final long serialVersionUID = 1L;
+    private List<GridEntry> entries = new ArrayList<>();
+    private List<GridEntryRenderer> renderers = new ArrayList<>();
 
-        add(getToolbar(), getContent());
-        updateList();
-        closeEditor();
-    }
+    public ListView()
+    {
+        setSpacing(false);
 
-    private HorizontalLayout getContent() {
-        HorizontalLayout content = new HorizontalLayout(grid, form);
-        content.setFlexGrow(2, grid);
-        content.setFlexGrow(1, form);
-        content.addClassNames("content");
-        content.setSizeFull();
-        return content;
-    }
+        Grid<GridEntryRenderer> grid = new Grid<>(GridEntryRenderer.class, false);
+        grid.addColumn(GridEntryRenderer::getName).setHeader("Entry name");
+        grid.addComponentColumn(GridEntryRenderer::getRenderedValue).setHeader("Entry value");
 
-    private void configureForm() {
-        form = new ContactForm(service.findAllCompanies(), service.findAllStatuses());
-        form.setWidth("25em");
-        form.addSaveListener(this::saveContact); // <1>
-        form.addDeleteListener(this::deleteContact); // <2>
-        form.addCloseListener(e -> closeEditor()); // <3>
-    }
-
-    private void saveContact(ContactForm.SaveEvent event) {
-        service.saveContact(event.getContact());
-        updateList();
-        closeEditor();
-    }
-
-    private void deleteContact(ContactForm.DeleteEvent event) {
-        service.deleteContact(event.getContact());
-        updateList();
-        closeEditor();
-    }
-
-    private void configureGrid() {
-        grid.addClassNames("contact-grid");
-        grid.setSizeFull();
-        grid.setColumns("firstName", "lastName", "email");
-        grid.addColumn(contact -> contact.getStatus().getName()).setHeader("Status");
-        grid.addColumn(contact -> contact.getCompany().getName()).setHeader("Company");
-        grid.getColumns().forEach(col -> col.setAutoWidth(true));
-
-        grid.asSingleSelect().addValueChangeListener(event ->
-                editContact(event.getValue()));
-    }
-
-    private Component getToolbar() {
-        filterText.setPlaceholder("Filter by name...");
-        filterText.setClearButtonVisible(true);
-        filterText.setValueChangeMode(ValueChangeMode.LAZY);
-        filterText.addValueChangeListener(e -> updateList());
-
-        Button addContactButton = new Button("Add contact");
-        addContactButton.addClickListener(click -> addContact());
-
-        var toolbar = new HorizontalLayout(filterText, addContactButton);
-        toolbar.addClassName("toolbar");
-        return toolbar;
-    }
-
-    public void editContact(Contact contact) {
-        if (contact == null) {
-            closeEditor();
-        } else {
-            form.setContact(contact);
-            form.setVisible(true);
-            addClassName("editing");
+        for (int entryIdx = 0; entryIdx < 100; entryIdx++)
+        {
+            GridEntry entry = new GridEntry("entry_" + entryIdx, String.valueOf(entryIdx));
+            entries.add(entry);
+            renderers.add(new GridEntryRenderer(entry));
         }
+
+        grid.setItems(renderers);
+        add(grid);
+
+        TextArea textArea = new TextArea();
+        textArea.setHeight("25%");
+        textArea.setWidth("75%");
+
+        Button submitBtn = new Button("Submit");
+        submitBtn.addClickListener(e -> {
+            textArea.clear();
+            StringBuilder text = new StringBuilder();
+            text.append(LocalDateTime.now().toString()).append("\n");
+            entries.forEach(entry -> text.append(entry.getName()).append("\t").append(entry.getValue()).append("\n"));
+            textArea.setValue(text.toString());
+        });
+        add(submitBtn, textArea);
+
+        setSizeFull();
+        setJustifyContentMode(JustifyContentMode.CENTER);
+        setDefaultHorizontalComponentAlignment(Alignment.CENTER);
+        getStyle().set("text-align", "center");
     }
 
-    private void closeEditor() {
-        form.setContact(null);
-        form.setVisible(false);
-        removeClassName("editing");
+    class GridEntryRenderer
+    {
+        private GridEntry entry;
+        TextArea textArea = new TextArea();
+
+        public GridEntryRenderer(GridEntry entry)
+        {
+            this.entry = entry;
+
+            Binder<GridEntryRenderer> binder = new Binder<>();
+            binder.setBean(this);
+
+            textArea.setEnabled(true);
+            textArea.setReadOnly(false);
+            textArea.setWidth(100, Unit.PERCENTAGE);
+            Binder.BindingBuilder<GridEntryRenderer, String> valueBindingBuilder = binder.forField(textArea);
+            valueBindingBuilder.bind(GridEntryRenderer::getValue, GridEntryRenderer::setValue);
+            binder.readBean(this);
+        }
+
+        private TextArea getRenderedValue()
+        {
+            return textArea;
+        }
+
+        private String getValue()
+        {
+            return entry.getValue();
+        }
+
+        private void setValue(String newValue)
+        {
+            entry.setValue(newValue);
+        }
+
+        protected String getName()
+        {
+            return entry.getName();
+        }
+
     }
 
-    private void addContact() {
-        grid.asSingleSelect().clear();
-        editContact(new Contact());
-    }
+    class GridEntry
+    {
+        private String name;
+        private String value;
 
+        GridEntry(String name, String value)
+        {
+            this.name = name;
+            this.value = value;
+        }
 
-    private void updateList() {
-        grid.setItems(service.findAllContacts(filterText.getValue()));
+        public String getValue()
+        {
+            return value;
+        }
+
+        public void setValue(String value)
+        {
+            this.value = value;
+        }
+
+        public String getName()
+        {
+            return name;
+        }
+
+        public void setName(String name)
+        {
+            this.name = name;
+        }
     }
 }
