@@ -14,31 +14,29 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 
 @PageTitle("list")
-@Route(value = "")
-public class ListView
-    extends VerticalLayout
-{
+@Route(value = "list")
+public class ListView extends VerticalLayout {
 
-    private static final long serialVersionUID = 1L;
     private List<GridEntry> entries = new ArrayList<>();
-    private List<GridEntryRenderer> renderers = new ArrayList<>();
 
-    public ListView()
-    {
+    public ListView() {
         setSpacing(false);
 
-        Grid<GridEntryRenderer> grid = new Grid<>(GridEntryRenderer.class, false);
-        grid.addColumn(GridEntryRenderer::getName).setHeader("Entry name");
-        grid.addComponentColumn(GridEntryRenderer::getRenderedValue).setHeader("Entry value");
+        Grid<GridEntry> grid = new Grid<>(GridEntry.class,
+                false);
+        grid.addColumn(GridEntry::getName).setHeader("Entry name");
+        grid.addComponentColumn(entry -> {
+            GridEntryRenderer renderer = new GridEntryRenderer(entry);
+            return renderer.getRenderedValue();
+        }).setHeader("Entry value");
 
-        for (int entryIdx = 0; entryIdx < 100; entryIdx++)
-        {
-            GridEntry entry = new GridEntry("entry_" + entryIdx, String.valueOf(entryIdx));
+        for (int entryIdx = 0; entryIdx < 100; entryIdx++) {
+            GridEntry entry = new GridEntry("entry_" + entryIdx,
+                    String.valueOf(entryIdx));
             entries.add(entry);
-            renderers.add(new GridEntryRenderer(entry));
         }
 
-        grid.setItems(renderers);
+        grid.setItems(entries);
         add(grid);
 
         TextArea textArea = new TextArea();
@@ -50,7 +48,8 @@ public class ListView
             textArea.clear();
             StringBuilder text = new StringBuilder();
             text.append(LocalDateTime.now().toString()).append("\n");
-            entries.forEach(entry -> text.append(entry.getName()).append("\t").append(entry.getValue()).append("\n"));
+            entries.forEach(entry -> text.append(entry.getName()).append("\t")
+                    .append(entry.getValue()).append("\n"));
             textArea.setValue(text.toString());
         });
         add(submitBtn, textArea);
@@ -61,13 +60,11 @@ public class ListView
         getStyle().set("text-align", "center");
     }
 
-    class GridEntryRenderer
-    {
+    class GridEntryRenderer {
         private GridEntry entry;
         TextArea textArea = new TextArea();
 
-        public GridEntryRenderer(GridEntry entry)
-        {
+        public GridEntryRenderer(GridEntry entry) {
             this.entry = entry;
 
             Binder<GridEntryRenderer> binder = new Binder<>();
@@ -76,61 +73,53 @@ public class ListView
             textArea.setEnabled(true);
             textArea.setReadOnly(false);
             textArea.setWidth(100, Unit.PERCENTAGE);
-            Binder.BindingBuilder<GridEntryRenderer, String> valueBindingBuilder = binder.forField(textArea);
-            valueBindingBuilder.bind(GridEntryRenderer::getValue, GridEntryRenderer::setValue);
+            Binder.BindingBuilder<GridEntryRenderer, String> valueBindingBuilder = binder
+                    .forField(textArea);
+            valueBindingBuilder.bind(GridEntryRenderer::getValue,
+                    GridEntryRenderer::setValue);
             binder.readBean(this);
         }
 
-        private TextArea getRenderedValue()
-        {
+        private TextArea getRenderedValue() {
             return textArea;
         }
 
-        private String getValue()
-        {
+        private String getValue() {
             return entry.getValue();
         }
 
-        private void setValue(String newValue)
-        {
+        private void setValue(String newValue) {
             entry.setValue(newValue);
         }
 
-        protected String getName()
-        {
+        protected String getName() {
             return entry.getName();
         }
 
     }
 
-    class GridEntry
-    {
+    class GridEntry {
         private String name;
         private String value;
 
-        GridEntry(String name, String value)
-        {
+        GridEntry(String name, String value) {
             this.name = name;
             this.value = value;
         }
 
-        public String getValue()
-        {
+        public String getValue() {
             return value;
         }
 
-        public void setValue(String value)
-        {
+        public void setValue(String value) {
             this.value = value;
         }
 
-        public String getName()
-        {
+        public String getName() {
             return name;
         }
 
-        public void setName(String name)
-        {
+        public void setName(String name) {
             this.name = name;
         }
     }
